@@ -1,0 +1,5 @@
+docker stop nettunnel
+docker rm nettunnel
+docker rmi nettunnelimage
+docker build -t nettunnelimage .
+docker run --name tunnel -it -d -p 80:5000 -p 8001:5001 nettunnelimage
