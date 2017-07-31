@@ -1,6 +1,8 @@
-﻿using System;
+﻿using Microsoft.Extensions.Configuration;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -16,9 +18,20 @@ namespace client
         private static ManualResetEventSlim semaphore = new ManualResetEventSlim(true);
         private static List<ArraySegment<byte>> buffer = new List<ArraySegment<byte>>();
         private static ArraySegment<byte> heartbeatdata = new ArraySegment<byte>(new byte[34]);
+        public static IConfigurationRoot Configuration { get; set; }
+        private static string serverDomain;
+        private static int serverPort;
 
         static void Main(string[] args)
         {
+            var builder = new ConfigurationBuilder()
+             .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("config.json");
+
+            Configuration = builder.Build();
+            serverDomain = Configuration["servername"];
+            serverPort = Convert.ToInt32(Configuration["serverport"]);
+
             Tcp = new TcpClient();
             AllClients = new ConcurrentDictionary<string, ForwardClient>();
 
@@ -34,7 +47,7 @@ namespace client
             {
                 if (!Tcp.Connected)
                 {
-                    await Tcp.ConnectAsync("www.littlewang.cn", 8001);
+                    await Tcp.ConnectAsync(serverDomain, serverPort);
                     Console.WriteLine("server connected, local: " + Tcp.Client.LocalEndPoint.ToString());
                     //await Tcp.Client.SendAsync(new ArraySegment<byte>(new byte[34]), SocketFlags.None);
                     _ = StartHeartBeat();
@@ -42,7 +55,6 @@ namespace client
             }
             catch (Exception ex)
             {
-                Console.WriteLine("ReConnecting...11001");
                 _ = Task.Run(() => Start());
                 return;
             }
@@ -74,7 +86,6 @@ namespace client
             }
             finally
             {
-                Console.WriteLine("ReConnecting...11001");
                 Tcp = new TcpClient();
                 _ = Task.Run(() => Start());
             }            
@@ -368,7 +379,7 @@ namespace client
                 data.RemoveAt(0);
             }
 
-            ForwardClient client = Program.AllClients.GetOrAdd(remote, new ForwardClient("localhost", 3300, remote));
+            ForwardClient client = Program.AllClients.GetOrAdd(remote, new ForwardClient(Program.Configuration["forwardname"], Convert.ToInt32(Program.Configuration["forwardport"]), remote));
             if (!client.IsConnected)
             {
                 await client.ConnectAsync();

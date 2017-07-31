@@ -1,0 +1,7 @@
+{
+  "servername": "your domain name",
+  "serverport": 8001,
+  "forwardname": "localhost",
+  "forwardport": 3300,
+  "subdomain": "mytunnel"
+}
