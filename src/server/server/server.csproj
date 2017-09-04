@@ -3,10 +3,14 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp1.1</TargetFramework>
-    <Version>0.0.1</Version>
+    <Version>0.0.2</Version>
     <Authors>jihuiwang</Authors>
     <Company>jihuiwang</Company>
     <Description>a simple tcp tunnel server</Description>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\sharelib\sharelib\sharelib\sharelib.csproj" />
+  </ItemGroup>
 
 </Project>
