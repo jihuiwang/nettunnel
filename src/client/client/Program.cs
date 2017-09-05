@@ -48,7 +48,8 @@ namespace client
 
                 SocketConnection conn = new SocketConnection(ClientManager.TunnelClient.Client, new TunnelHandler());
                 conn.OnClose += () =>
-                {                      
+                {
+                    Console.WriteLine("Reconnecting...");
                     Task.Run(() => Start());
                 };
                 conn.StartAsync();
@@ -56,6 +57,7 @@ namespace client
             catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
+                Console.WriteLine("Client stopped...");
                 return;
             }
 
