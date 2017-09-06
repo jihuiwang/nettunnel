@@ -72,20 +72,21 @@ namespace client
 
         static async Task StartHeartBeat()
         {
-            //while (true)
-            //{
-            //    try
-            //    {
+            while (true)
+            {
+                try
+                {
                     CommandFrame frame = new CommandFrame();
                     frame.Command = new MessageCommand() { Message = "heart beat" };
 
                     await frame.Send(ClientManager.TunnelConnection);
-             //       await Task.Delay(600000);
-             //   }
-             //   catch
-             //   {
-             //   }
-            //}
+                    //await Task.Delay(60000);
+                    return;
+                }
+                catch
+                {
+                }
+            }
         }
     }
     

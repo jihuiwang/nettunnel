@@ -248,9 +248,9 @@ namespace sharelib
 
         public BufferSeg(ArraySegment<byte> data)
         {
-            if (data == null && data.Count <= 0)
+            if (data.Count <= 0)
             {
-                throw new ArgumentNullException("data");
+                throw new ArgumentNullException("data empty");
             }
 
             buff = data.Array;

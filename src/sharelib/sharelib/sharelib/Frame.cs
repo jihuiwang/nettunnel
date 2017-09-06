@@ -321,7 +321,7 @@ namespace sharelib
         public string Hostname { get; set; }
 
         private int examed = 0;
-        private int lineCount = 0;
+        //private int lineCount = 0;
 
         public override bool Exam(NetBuffer buff)
         {
@@ -333,15 +333,11 @@ namespace sharelib
             int i = examed;
             for (; i < buff.Count - 1; i++)
             {
-                if (buff[i] == 0x0d && buff[i + 1] == 0x0a)
-                {
-                    lineCount++;
-                    if (lineCount >= 2)
-                    {
-                        examed = i;
-                        setHostname(buff);
-                        return true;
-                    }
+                if (buff[i] == 0x0d && buff[i + 1] == 0x0a && buff[i + 2] == 0x0d && buff[i + 3] == 0x0a)
+                {                    
+                    examed = i;
+                    setHostname(buff);
+                    return true;
                 }
             }
 
@@ -360,7 +356,7 @@ namespace sharelib
             if (sc == null)
             {
                 await conn.Socket.SendAsync(new ArraySegment<byte>(Encoding.ASCII.GetBytes(page404)), SocketFlags.None);
-                throw new Exception("no tunnel has been bound to this domain");
+                throw new Exception("no tunnel has been bound to this domain: " + Hostname);
             }
 
             string remoteEnd = conn.Socket.RemoteEndPoint.ToString();
@@ -383,21 +379,22 @@ namespace sharelib
 
         private void setHostname(NetBuffer buff)
         {
-            byte[] b = new byte[examed - 1];
-            for (int i = 0; i < b.Length; i++)
-            {
-                b[i] = buff[i];
-            }
-
+            Hostname = "";
             try
             {
-                string req = Encoding.UTF8.GetString(b);
-                int hostpos = req.IndexOf("\r\n");
-                Hostname = req.Substring(hostpos + 2).Split(':')[1].Replace(" ", "");
+                string req = buff.GetString();
+
+                foreach (var item in req.Split("\r\n"))
+                {
+                    if (item.IndexOf("Host") == 0)
+                    {
+                        Hostname = item.Split(':')[1].Replace(" ", "");
+                    }
+                } 
             }
             catch (Exception ex)
             {
-                Hostname = "";
+                Console.WriteLine(ex.Message);
             }
         }
 

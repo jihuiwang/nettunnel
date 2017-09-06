@@ -110,7 +110,7 @@ namespace server
                 frame.Data = conn.Buffer.SplitAll();
                 await frame.Process(conn);
 
-                conn.CurrentFrame = null;
+                //conn.CurrentFrame = null;
 
                 return true;            
             }
