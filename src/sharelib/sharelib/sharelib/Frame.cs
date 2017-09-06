@@ -351,7 +351,11 @@ namespace sharelib
 
         public override async Task Process(SocketConnection conn)
         {
-            SocketConnection sc = ConnectionManager.GetTunnelSocket(Hostname);
+            if (conn.MapConnection == null)
+            {
+                conn.MapConnection = ConnectionManager.GetTunnelSocket(Hostname);
+            }
+            SocketConnection sc = conn.MapConnection;
 
             if (sc == null)
             {
@@ -360,7 +364,10 @@ namespace sharelib
             }
 
             string remoteEnd = conn.Socket.RemoteEndPoint.ToString();
-            ConnectionManager.AddRequest(remoteEnd, conn);
+            if (!conn.IsRequestAdded)
+            {
+                conn.IsRequestAdded = ConnectionManager.AddRequest(remoteEnd, conn);
+            }            
 
             DataForwardFrame f = new DataForwardFrame();
             f.Remote = remoteEnd;

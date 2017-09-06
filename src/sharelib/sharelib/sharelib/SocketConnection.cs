@@ -16,10 +16,13 @@ namespace sharelib
         private ISocketHandler handler;
         //private int receiveCount;
         private int isHandling = 0;
+        private Task tReceive;
 
         public Frame CurrentFrame { get; set; }
         public NetBuffer Buffer { get { return buffer; } }
         public Socket Socket { get { return socket; } }
+        public SocketConnection MapConnection { get; set; }
+        public bool IsRequestAdded { get; set; }
 
         public event Action OnClose;
 
@@ -34,8 +37,9 @@ namespace sharelib
 
         public void StartAsync()
         {
-            buffer.OnReceived += async () => await schedule();
-            Task tReceive = StartReceive();
+            //buffer.OnReceived += async () => await schedule();
+            buffer.OnReceived += schedule;
+            tReceive = StartReceive();
         }
 
         public async Task StartReceive()
@@ -92,7 +96,8 @@ namespace sharelib
                 }                
             }
             catch (Exception ex)
-            { 
+            {
+                Console.WriteLine("from schedule: " + ex.Message);
                 closeConnection();
             }
             finally

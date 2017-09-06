@@ -12,8 +12,8 @@ namespace sharelib
         private BufferSeg start;
         private BufferSeg end;
         private BufferSeg segPos;
-        private ManualResetEventSlim signal = new ManualResetEventSlim(true);
         private Dictionary<int, int> countIndex = new Dictionary<int, int>();
+        private object lockobj = new object();
 
         public event Func<Task> OnReceived;
 
@@ -22,46 +22,44 @@ namespace sharelib
 
         public void Add(ArraySegment<byte> data)
         {
-            signal.Wait();
-
-            BufferSeg buff = new BufferSeg(data);
-            if (start == null)
+            lock (lockobj)
             {
-                start = end = buff;
+                BufferSeg buff = new BufferSeg(data);
+                if (start == null)
+                {
+                    start = end = buff;
+                }
+                else
+                {
+                    end.Next = buff;
+                    end = buff;
+                }
+
+                count += data.Count;
+
+                if (OnReceived != null)
+                {
+                    Task.Run(async () => await OnReceived.Invoke()).ConfigureAwait(false);
+                }
             }
-            else
-            {
-                end.Next = buff;
-                end = buff;
-            }
-
-            count += data.Count;
-
-            signal.Set();
-
-            if (OnReceived != null)
-            {
-                Task.Run(() => OnReceived.Invoke()).ConfigureAwait(false);
-            }            
         }
 
         public void Add(BufferSeg data)
         {
-            signal.Wait();
-
-            if (start == null)
+            lock (lockobj)
             {
-                start = end = data;
-            }
-            else
-            {
-                end.Next = data;
-                end = data;
-            }
+                if (start == null)
+                {
+                    start = end = data;
+                }
+                else
+                {
+                    end.Next = data;
+                    end = data;
+                }
 
-            count += data.Count;
-
-            signal.Set();            
+                count += data.Count;
+            }
         }
 
         //read only
@@ -69,91 +67,110 @@ namespace sharelib
         {
             get
             {
-                if (index < 0 || index > count)
+                lock (lockobj)
                 {
-                    throw new ArgumentOutOfRangeException("index out of range");
-                }
-
-                BufferSeg current = start;
-                int acc = 0;
-                while (current != null)
-                {                    
-                    if (acc + current.Count >= index)
+                    try
                     {
-                        break;
-                    }
-                    acc += current.Count;
-                    current = current.Next;
-                }
+                        if (index < 0 || index > count)
+                        {
+                            throw new ArgumentOutOfRangeException("index out of range");
+                        }
 
-                return current.Buff[current.Start + index - acc];
+                        BufferSeg current = start;
+                        int acc = 0;
+                        if (current.Count >= index)
+                        {
+                            return current.Buff[current.Start + index];
+                        }
+                        acc += current.Count;
+
+                        while (current.Next != null)
+                        {
+                            current = current.Next;
+                            if (acc + current.Count >= index)
+                            {
+                                break;
+                            }
+                            acc += current.Count;
+                        }
+
+                        return current.Buff[current.Start + index - acc];
+                    }
+                    catch (Exception ex)
+                    {
+                        throw ex;
+                    }
+                }
             }
         }
 
         public NetBuffer Split(int length)
         {
             NetBuffer outBuff = new NetBuffer();
-
-            signal.Wait();
-
-            try
+            
+            lock (lockobj)
             {
-                if (length > count)
-                {
-                    return null;
-                }
+                int before = this.count;
 
-                BufferSeg current = start;
-                int acc = 0;
-                while (current != null)
+                try
                 {
-                    acc += current.Count;
-                    if (acc >= length)
+                    if (length > count)
                     {
-                        break;
+                        return null;
                     }
-                    outBuff.Add(current);
-                    current = current.Next;
-                }
 
-                if (current == null)
+                    BufferSeg current = start;
+                    int acc = 0;
+                    while (current != null)
+                    {
+                        acc += current.Count;
+                        if (acc >= length)
+                        {
+                            break;
+                        }
+                        outBuff.Add(current);
+                        current = current.Next;
+                    }
+
+                    if (current == null)
+                    {
+                        return null;
+                    }
+
+                    if (acc == length)
+                    {
+                        start = current.Next;
+                        end = start == null ? null : (start.Next == null ? start : end);
+
+                        current.Next = null;
+                        outBuff.Add(current);
+                    }
+                    else
+                    {
+                        int delta = current.Count - (acc - length);
+                        start = new BufferSeg(current, current.Start + delta, current.End);
+                        start.Next = current.Next;
+                        end = start.Next == null ? start : end;
+
+                        current.End = current.Start + delta - 1;
+                        current.Next = null;
+                        outBuff.Add(current);
+                    }
+                    count -= length;
+                }
+                catch
                 {
-                    return null;
-                }
 
-                if (acc == length)
-                {
-                    start = current.Next;
-                    end = start == null ? null : (start.Next == null ? start : end);
-
-                    current.Next = null;
-                    outBuff.Add(current);
                 }
-                else
-                {
-                    int delta = current.Count - (acc - length);
-                    //BufferSeg splitEnd = new BufferSeg(current, current.Start, current.Start + delta);
-                    start = new BufferSeg(current, current.Start + delta, current.End);
-                    start.Next = current.Next;
-                    end = start.Next == null ? start : end;
-
-                    current.End = current.Start + delta - 1;
-                    current.Next = null;
-                    outBuff.Add(current);
-                }
-                count -= length;
 
                 return outBuff;
-            }
-            finally
-            {
-                signal.Set();
             }
         }
 
         public NetBuffer SplitAll()
         {
-            return Split(this.count);
+            NetBuffer result = Split(this.count);
+            return result;
         }
 
         IEnumerator IEnumerable.GetEnumerator()
@@ -195,18 +212,21 @@ namespace sharelib
 
         public byte[] GetBytes()
         {
-            byte[] bytes = new byte[count];
-            int pos = 0;
-
-            BufferSeg seg = start;
-            while (seg != null)
+            lock (lockobj)
             {
-                Array.Copy(seg.Buff, seg.Start, bytes, pos, seg.Count);
-                pos += seg.Count;
-                seg = seg.Next;
-            }
+                byte[] bytes = new byte[count];
+                int pos = 0;
 
-            return bytes;
+                BufferSeg seg = start;
+                while (seg != null)
+                {
+                    Array.Copy(seg.Buff, seg.Start, bytes, pos, seg.Count);
+                    pos += seg.Count;
+                    seg = seg.Next;
+                }
+
+                return bytes;
+            }            
         }
 
         public string GetString()

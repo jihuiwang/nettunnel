@@ -59,40 +59,7 @@ namespace client
                 Console.WriteLine(ex.Message);
                 Console.WriteLine("Client stopped...");
                 return;
-            }
-
-            /*
-            try
-            {
-                while (true)
-                {
-                    ArraySegment<byte> seg = new ArraySegment<byte>(new byte[2048]);
-                    var bytesReceived = await Tcp.Client.ReceiveAsync(seg, SocketFlags.None);
-
-                    if (bytesReceived == 0)
-                    {
-                        // FIN
-                        break;
-                    }
-
-                    try
-                    {
-                        AppendData(new ArraySegment<byte>(seg.Array, 0, bytesReceived));
-                        await ProcessData();
-                    }
-                    catch
-                    {
-
-                    }
-                }
-                
-            }
-            finally
-            {
-                Tcp = new TcpClient();
-                _ = Task.Run(() => Start());
-            }      
-            */      
+            }  
         }
 
         static async Task RegisterTunnel()
@@ -120,64 +87,6 @@ namespace client
              //   }
             //}
         }
-
-        /*
-        static async Task ProcessData()
-        {
-            WaitBuffer();
-
-            try
-            {
-                List<ArraySegment<byte>> data = Helper.SplitArraySeg(buffer);
-
-                while (data != null)
-                {
-                    await Helper.SendToTarget(data);
-                    data = Helper.SplitArraySeg(buffer);
-                }
-
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
-            finally
-            {
-                ReleaseBuffer();
-            }
-
-            //string remote = Encoding.UTF8.GetString(data.Array, data.Offset, pos - data.Offset);
-
-            //ForwardClient client = AllClients.GetOrAdd(remote, new ForwardClient("localhost", 3300, remote));
-            //if (!client.IsConnected)
-            //{
-            //    await client.ConnectAsync();
-            //    client.StartRecieve();
-            //}
-
-            ////byte[] fdata = new byte[data.Length - pos - 2];
-            //ArraySegment<byte> fdata = new ArraySegment<byte>(data.Array, pos + 2, data.Count - (pos - data.Offset) - 2);
-            ////Array.Copy(data, pos + 2, fdata, 0, fdata.Length);
-
-            //client.SendAsync(fdata);
-        }
-
-        static void WaitBuffer()
-        {
-            semaphore.Wait();
-        }
-
-        static void ReleaseBuffer()
-        {
-            semaphore.Set();
-        }
-
-        static void AppendData(ArraySegment<byte> data)
-        {
-            WaitBuffer();
-            buffer.Add(data);
-            ReleaseBuffer();
-        }*/
     }
     
     public class TunnelHandler : ISocketHandler

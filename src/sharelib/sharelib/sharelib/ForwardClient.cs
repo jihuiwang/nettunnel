@@ -13,7 +13,7 @@ namespace sharelib
         int port;
         string remote;
 
-        public SocketConnection Connection;
+        public SocketConnection Connection { get; set; }
         public bool IsConnected { get { return client.Connected; } }
 
         public ForwardClient(string host, int port, string remote)
@@ -38,12 +38,12 @@ namespace sharelib
             await client.Client.SendAsync(data, SocketFlags.None);
         }
 
-        public void SendAsync(byte[] data)
-        {
-            Console.WriteLine("data send to: " + client.Client.RemoteEndPoint.ToString() + " data length: " + data.Length);
-            //Console.WriteLine(Encoding.UTF8.GetString(data));
-            Task.Run(() => client.Client.SendAsync(new ArraySegment<byte>(data), SocketFlags.None));
-        }
+        //public void SendAsync(byte[] data)
+        //{
+        //    Console.WriteLine("data send to: " + client.Client.RemoteEndPoint.ToString() + " data length: " + data.Length);
+        //    //Console.WriteLine(Encoding.UTF8.GetString(data));
+        //    Task.Run(() => client.Client.SendAsync(new ArraySegment<byte>(data), SocketFlags.None));
+        //}
     }
 
     public class ForwardHandler : ISocketHandler
