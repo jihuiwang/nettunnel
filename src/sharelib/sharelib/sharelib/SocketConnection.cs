@@ -14,7 +14,7 @@ namespace sharelib
         private int buffsize;
         private Socket socket;
         private ISocketHandler handler;
-        //private int receiveCount;
+        private int processCount;
         private int isHandling = 0;
         private Task tReceive;
 
@@ -32,7 +32,7 @@ namespace sharelib
             this.buffsize = 2048;
             this.socket = socket;
             this.handler = handler;
-            //receiveCount = 0;
+            this.processCount = 0;
         }
 
         public void StartAsync()
@@ -61,6 +61,7 @@ namespace sharelib
             }
             catch (Exception ex)
             {
+                Logger.Log(ex.Message);
                 Console.WriteLine(ex.Message);
             }
             finally
@@ -90,14 +91,26 @@ namespace sharelib
                 if (await handler.ProcessData(this))
                 {
                     if(buffer.Count > 0)
-                    { 
+                    {
+                        processCount++;
                         continueTask = new Task(async () => await schedule());
+                    }
+                    else
+                    {
+                        processCount = 0;
+                    }
+
+                    if (processCount > 100)
+                    {
+                        throw new Exception("max process count in handler");
                     }
                 }                
             }
             catch (Exception ex)
             {
+                Logger.Log("from schedule: " + ex.Message);
                 Console.WriteLine("from schedule: " + ex.Message);
+                continueTask = null;
                 closeConnection();
             }
             finally

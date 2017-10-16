@@ -16,14 +16,15 @@ namespace server
         public static void Main()
         {
             Console.WriteLine("Starting...");
+            Logger.Init();
 
             SocketServer serverOut = new SocketServer(new SockerHandlerFactory("Web"));
-            Task.Run(() => serverOut.StartListening(5000)).ConfigureAwait(false);
+            Task o = serverOut.StartListening(5000);//.ConfigureAwait(false);
 
             SocketServer serverTunnel = new SocketServer(new SockerHandlerFactory("Transfer"));
-            Task.Run(() => serverTunnel.StartListening(5001)).ConfigureAwait(false);
+            Task t = serverTunnel.StartListening(5001);//.ConfigureAwait(false);
 
-            Thread.Sleep(Int32.MaxValue);
+            Task.WaitAll(o, t);
         }        
     }
 
@@ -60,7 +61,8 @@ namespace server
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.ToString());
+                Logger.Log("listening " + localEndPoint.ToString() + e.Message);
+                Console.WriteLine(e.Message);
             }
         }
     }

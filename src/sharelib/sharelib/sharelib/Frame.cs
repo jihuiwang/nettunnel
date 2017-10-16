@@ -342,6 +342,12 @@ namespace sharelib
             }
 
             examed = i;
+
+            if (examed > 1024)
+            {
+                throw new Exception("Not a http reqeust");
+            }
+
             return false;
         }
 
